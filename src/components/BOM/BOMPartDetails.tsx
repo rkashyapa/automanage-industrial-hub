@@ -344,29 +344,40 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
             </button>
           </div>
           <div className="space-y-3">
-            {vendors.map((vendor, index) => (
-              <div key={index} className="border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium text-gray-900 flex items-center gap-1">
-                    {vendor.name}
-                    <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Edit vendor" onClick={() => handleEditVendorOpen(index)}>
-                      <Pencil size={13} />
-                    </button>
-                    <button className={`p-1 ml-1 ${finalizedVendorIdx === index ? 'text-green-600' : 'text-gray-400 hover:text-green-600'}`} aria-label="Finalize vendor" onClick={() => handleFinalizeVendor(index)}>
-                      <Check size={15} />
+            {vendors.map((vendor, index) => {
+              // Ensure correct types and defaults
+              const price = 'price' in vendor ? vendor.price : '';
+              const leadTime = 'leadTime' in vendor ? vendor.leadTime : '';
+              const availability = 'availability' in vendor ? vendor.availability : 'In Stock';
+              const qty = 'qty' in vendor ? vendor.qty : 1;
+              return (
+                <div key={index} className="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 relative">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-base">{vendor.name}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{availability}</span>
+                  </div>
+                  <div className="flex items-center gap-6 text-gray-700 mb-2">
+                    <span className="flex items-center gap-1 text-sm"><span className="text-base">$</span>{price}</span>
+                    <span className="flex items-center gap-1 text-sm"><Clock size={16} />{leadTime}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500">Qty:</span>
+                    <button className="px-2 py-1 border rounded text-sm" onClick={() => {
+                      const newQty = qty - 1;
+                      if (newQty > 0) setVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
+                    }}>-</button>
+                    <span className="font-medium text-sm">{qty}</span>
+                    <button className="px-2 py-1 border rounded text-sm" onClick={() => {
+                      const newQty = qty + 1;
+                      setVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
+                    }}>+</button>
+                    <button className="ml-auto text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => setVendors(vendors.filter((_, i) => i !== index))}>
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-1 text-sm">
-                  {'leadTime' in vendor && vendor.leadTime && (
-                    <div><span className="font-semibold">Lead Time:</span> {vendor.leadTime}</div>
-                  )}
-                  {'price' in vendor && vendor.price !== undefined && (
-                    <div><span className="font-semibold">Cost:</span> ${vendor.price}</div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {/* Edit Vendor Dialog */}
             <Dialog open={editVendorIdx !== undefined} onOpenChange={v => { if (!v) setEditVendorIdx(undefined); }}>
               <DialogContent>
