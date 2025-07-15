@@ -44,9 +44,10 @@ interface BOMPartRowProps {
   onClick: () => void;
   onQuantityChange?: (partId: string, newQuantity: number) => void;
   allVendors?: Array<{ name: string; price: number; leadTime: string; availability: string }>;
+  onDelete?: (partId: string) => void;
 }
 
-const BOMPartRow = ({ part, onClick, onQuantityChange, allVendors = [] }: BOMPartRowProps) => {
+const BOMPartRow = ({ part, onClick, onQuantityChange, allVendors = [], onDelete }: BOMPartRowProps) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [vendors, setVendors] = useState(part.vendors);
   const [form, setForm] = useState({ name: '', price: 0, leadTime: '', availability: '' });
@@ -109,7 +110,7 @@ const BOMPartRow = ({ part, onClick, onQuantityChange, allVendors = [] }: BOMPar
 
   return (
     <div 
-      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+      className="border border-gray-200 rounded-lg p-9 hover:bg-gray-50 transition-colors cursor-pointer relative"
       onClick={onClick}
     >
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">

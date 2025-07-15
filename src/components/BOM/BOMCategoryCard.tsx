@@ -35,6 +35,7 @@ interface BOMCategoryCardProps {
   onToggle: () => void;
   onPartClick: (part: BOMItem) => void;
   onQuantityChange?: (partId: string, newQuantity: number) => void;
+  onDeletePart?: (partId: string) => void;
   onDeleteCategory?: (categoryName: string) => void;
 }
 
@@ -120,6 +121,7 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, on
                   part={item}
                   onClick={() => onPartClick(item)}
                   onQuantityChange={onQuantityChange}
+                  onDelete={onDeleteCategory}
                 />
               ))}
             </div>

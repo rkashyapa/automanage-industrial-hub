@@ -91,6 +91,19 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     // Optionally reset other related state here if needed
   }, [part]);
 
+  // Sync vendors state with selected part
+  useEffect(() => {
+    setVendors(part.vendors || []);
+  }, [part]);
+
+  // Update vendors and notify parent
+  const updateVendors = (newVendors) => {
+    setVendors(newVendors);
+    if (typeof onUpdatePart === 'function') {
+      onUpdatePart({ ...part, vendors: newVendors });
+    }
+  };
+
   // Edit vendor state and handlers
   const [editVendorIdx, setEditVendorIdx] = useState<number | undefined>(undefined);
   const [editVendorName, setEditVendorName] = useState('');
@@ -147,25 +160,21 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
 
   const handleAddVendor = () => {
     if (!vendorName.trim()) return;
-    setVendors([
+    const newVendors = [
       ...vendors,
       {
         name: vendorName,
-        pan,
-        gst,
-        bank,
-        po,
-        leadTime: vendorLeadTime,
         price: vendorCost ? Number(vendorCost) : undefined,
+        leadTime: vendorLeadTime,
+        availability: color,
+        qty: 1,
       },
-    ]);
+    ];
+    updateVendors(newVendors);
     setVendorName('');
     setVendorLeadTime('');
     setVendorCost('');
-    setPan('');
-    setGst('');
-    setBank('');
-    setPo('');
+    setColor('In Stock');
     setAddVendorOpen(false);
   };
 
@@ -179,7 +188,7 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
   };
   const handleEditVendorSave = () => {
     if (editVendorIdx === undefined) return;
-    setVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, price: Number(editPan), leadTime: editGst, availability: editBank } : v));
+    updateVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, price: Number(editPan), leadTime: editGst, availability: editBank } : v));
     setEditVendorIdx(undefined);
   };
 
@@ -199,34 +208,7 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg">{partState?.name}
-              <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                <DialogTrigger asChild>
-                  <button className="ml-2 p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Edit part specs">
-                    <Pencil size={14} />
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Edit Camera Specifications</DialogTitle>
-                  </DialogHeader>
-                  <form className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Part Name</label>
-                      <input className="w-full border rounded p-2" value={partName} onChange={e => setPartName(e.target.value)} placeholder="e.g. Basler acA2040-90um" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Quantity</label>
-                      <input type="number" min={1} className="w-full border rounded p-2" value={qty} onChange={e => setQty(Number(e.target.value))} />
-                    </div>
-                  </form>
-                  <DialogFooter className="mt-4 flex gap-2">
-                    <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleSave}>Save</button>
-                    <button type="button" className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setEditOpen(false)}>Cancel</button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
+            <CardTitle className="text-lg">{partState?.name}</CardTitle>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="outline">{partState?.partId}</Badge>
               <Badge className={getStatusColor(partState?.status || '')}>
@@ -234,9 +216,40 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               </Badge>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X size={16} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Edit part specs">
+                  <Pencil size={18} />
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Camera Specifications</DialogTitle>
+                </DialogHeader>
+                <form className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Part Name</label>
+                    <input className="w-full border rounded p-2" value={partName} onChange={e => setPartName(e.target.value)} placeholder="e.g. Basler acA2040-90um" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Quantity</label>
+                    <input type="number" min={1} className="w-full border rounded p-2" value={qty} onChange={e => setQty(Number(e.target.value))} />
+                  </div>
+                </form>
+                <DialogFooter className="mt-4 flex gap-2">
+                  <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleSave}>Save</button>
+                  <button type="button" className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setEditOpen(false)}>Cancel</button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <button className="p-1 text-gray-500 hover:text-red-600 align-middle" aria-label="Delete part" onClick={() => onDeletePart && partState && onDeletePart(partState.id)}>
+              <Trash2 size={18} />
+            </button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X size={16} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       
@@ -342,9 +355,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
           <div className="flex items-center mb-3 justify-between">
             <div className="flex items-center">
               <h4 className="font-medium text-gray-900 mr-2">Vendor Comparison</h4>
-              <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Add vendor" onClick={() => setAddVendorOpen(true)}>
-                <Plus size={16} />
-              </button>
+            <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Add vendor" onClick={() => setAddVendorOpen(true)}>
+              <Plus size={16} />
+            </button>
             </div>
             <div className="relative">
               <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" aria-label="Sort vendors" onClick={() => setShowSortDropdown(s => !s)}>
@@ -392,20 +405,20 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                     <span className="text-xs text-gray-500">Qty:</span>
                     <button className="px-2 py-1 border rounded text-sm" onClick={() => {
                       const newQty = qty - 1;
-                      if (newQty > 0) setVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
+                      if (newQty > 0) updateVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
                     }}>-</button>
                     <span className="font-medium text-sm">{qty}</span>
                     <button className="px-2 py-1 border rounded text-sm" onClick={() => {
                       const newQty = qty + 1;
-                      setVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
+                      updateVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
                     }}>+</button>
                     <div className="ml-auto flex items-center gap-2">
                       <button className="text-gray-500 hover:bg-gray-100 rounded-full p-2" onClick={() => handleEditVendorOpen(index)}>
                         <Pencil size={18} />
-                      </button>
-                      <button className="text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => setVendors(vendors.filter((_, i) => i !== index))}>
+                    </button>
+                      <button className="text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => updateVendors(vendors.filter((_, i) => i !== index))}>
                         <Trash2 size={18} />
-                      </button>
+                    </button>
                     </div>
                   </div>
                 </div>
@@ -451,7 +464,7 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                       <div className="mb-4 text-gray-800">Are you sure you want to delete this vendor?</div>
                       <div className="flex justify-center gap-4">
                         <button className="px-4 py-1 bg-red-600 text-white rounded" onClick={() => {
-                          if (editVendorIdx !== undefined) setVendors(vendors.filter((_, i) => i !== editVendorIdx));
+                          if (editVendorIdx !== undefined) updateVendors(vendors.filter((_, i) => i !== editVendorIdx));
                           setEditVendorIdx(undefined);
                           setShowDeleteConfirm(false);
                         }}>Yes</button>

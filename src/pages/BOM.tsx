@@ -356,6 +356,14 @@ const BOM = () => {
                 onToggle={() => toggleCategory(category.name)}
                 onPartClick={handlePartClick}
                 onQuantityChange={handleQuantityChange}
+                onDeletePart={partId => {
+                  setCategories(prev => prev.map(cat =>
+                    cat.name === category.name
+                      ? { ...cat, items: cat.items.filter(item => item.id !== partId) }
+                      : cat
+                  ));
+                  if (selectedPart && selectedPart.id === partId) setSelectedPart(null);
+                }}
               />
             ))}
             
