@@ -185,17 +185,22 @@ const BOM = () => {
   })).filter(category => category.items.length > 0);
 
   const [addPartOpen, setAddPartOpen] = useState(false);
-  const [newPart, setNewPart] = useState({ name: '', partId: '', description: '', quantity: 1 });
+  const [newPart, setNewPart] = useState({ name: '', partId: '', quantity: 1, descriptionKV: [{ value: '', key: '' }] });
   const [categoryForPart, setCategoryForPart] = useState<string | null>(null);
 
   const handleAddPart = () => {
     if (!categoryForPart) return;
+    // Build description string from key-value pairs
+    const descriptionString = newPart.descriptionKV
+      .filter(kv => kv.value.trim() && kv.key.trim())
+      .map(kv => `• ${kv.value}: ${kv.key}`)
+      .join('\n');
     setCategories(categories.map(cat =>
       cat.name === categoryForPart
-        ? { ...cat, items: [...cat.items, { id: Date.now().toString(), name: newPart.name, partId: newPart.partId, description: newPart.description, category: categoryForPart, quantity: newPart.quantity, vendors: [], status: 'not-ordered' }] }
+        ? { ...cat, items: [...cat.items, { id: Date.now().toString(), name: newPart.name, partId: newPart.partId, description: descriptionString, descriptionKV: newPart.descriptionKV, category: categoryForPart, quantity: newPart.quantity, vendors: [], status: 'not-ordered' }] }
         : cat
     ));
-    setNewPart({ name: '', partId: '', description: '', quantity: 1 });
+    setNewPart({ name: '', partId: '', quantity: 1, descriptionKV: [{ value: '', key: '' }] });
     setAddPartOpen(false);
     setCategoryForPart(null);
   };
@@ -278,10 +283,60 @@ const BOM = () => {
                   </ul>
                 </div>
               )}
-              <input className="w-full border rounded p-2 mb-2" value={newPart.name} onChange={e => setNewPart({ ...newPart, name: e.target.value })} placeholder="Part name" />
-              <input className="w-full border rounded p-2 mb-2" value={newPart.partId} onChange={e => setNewPart({ ...newPart, partId: e.target.value })} placeholder="Part ID" />
-              <input className="w-full border rounded p-2 mb-2" value={newPart.description} onChange={e => setNewPart({ ...newPart, description: e.target.value })} placeholder="Description" />
-              <input className="w-full border rounded p-2 mb-4" type="number" min={1} value={newPart.quantity} onChange={e => setNewPart({ ...newPart, quantity: Number(e.target.value) })} placeholder="Quantity" />
+              <input className="w-full border rounded p-2 mb-2" value={newPart.name} onChange={e => setNewPart({ ...newPart, name: e.target.value, descriptionKV: newPart.descriptionKV })} placeholder="Part name" />
+              <input className="w-full border rounded p-2 mb-2" value={newPart.partId} onChange={e => setNewPart({ ...newPart, partId: e.target.value, descriptionKV: newPart.descriptionKV })} placeholder="Part ID" />
+              {/* Description Key-Value Inputs */}
+              <div className="mb-2">
+                <div className="font-semibold text-sm mb-1 text-left">Description</div>
+                {newPart.descriptionKV.map((kv, idx) => (
+                  <div key={idx} className="flex gap-2 mb-1">
+                    <input
+                      className="border rounded p-2 font-bold w-1/2"
+                      placeholder="Value (bold, left)"
+                      value={kv.value}
+                      onChange={e => setNewPart({
+                        ...newPart,
+                        descriptionKV: newPart.descriptionKV.map((item, i) => i === idx ? { ...item, value: e.target.value } : item)
+                      })}
+                    />
+                    <input
+                      className="border rounded p-2 w-1/2"
+                      placeholder="Key (right)"
+                      value={kv.key}
+                      onChange={e => setNewPart({
+                        ...newPart,
+                        descriptionKV: newPart.descriptionKV.map((item, i) => i === idx ? { ...item, key: e.target.value } : item)
+                      })}
+                    />
+                    <button
+                      className="text-red-500 px-2"
+                      onClick={e => {
+                        e.preventDefault();
+                        setNewPart({
+                          ...newPart,
+                          descriptionKV: newPart.descriptionKV.length > 1 ? newPart.descriptionKV.filter((_, i) => i !== idx) : newPart.descriptionKV
+                        });
+                      }}
+                      disabled={newPart.descriptionKV.length === 1}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="text-blue-600 text-xs mt-1"
+                  onClick={e => {
+                    e.preventDefault();
+                    setNewPart({
+                      ...newPart,
+                      descriptionKV: [...newPart.descriptionKV, { value: '', key: '' }]
+                    });
+                  }}
+                >
+                  + Add Row
+                </button>
+              </div>
+              <input className="w-full border rounded p-2 mb-4" type="number" min={1} value={newPart.quantity} onChange={e => setNewPart({ ...newPart, quantity: Number(e.target.value), descriptionKV: newPart.descriptionKV })} placeholder="Quantity" />
               <div className="flex justify-center gap-2">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart || !newPart.name.trim() || !newPart.partId.trim()}>Add</button>
                 <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setAddPartOpen(false)}>Cancel</button>
