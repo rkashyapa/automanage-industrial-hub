@@ -24,6 +24,7 @@ interface BOMItem {
   status: 'not-ordered' | 'ordered' | 'received';
   expectedDelivery?: string;
   poNumber?: string;
+  finalizedVendor?: { name: string; price: number; leadTime: string; availability: string };
 }
 
 interface BOMCategory {

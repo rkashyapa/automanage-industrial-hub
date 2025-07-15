@@ -1,7 +1,7 @@
 
 import { X, FileText, Calendar, Building2, DollarSign, Clock, Package, Pencil, Plus, Check, Trash2, Upload as UploadIcon } from 'lucide-react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +85,11 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     | { name: string; pan?: string; gst?: string; bank?: string; po?: string };
   const [vendors, setVendors] = useState<Vendor[]>(part.vendors || []);
   const [partState, setPartState] = useState(part);
+
+  useEffect(() => {
+    setPartState(part);
+    // Optionally reset other related state here if needed
+  }, [part]);
 
   // Edit vendor state and handlers
   const [editVendorIdx, setEditVendorIdx] = useState<number | undefined>(undefined);
@@ -209,32 +214,6 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                       <input className="w-full border rounded p-2" value={partName} onChange={e => setPartName(e.target.value)} placeholder="e.g. Basler acA2040-90um" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">Resolution</label>
-                      <input className="w-full border rounded p-2" value={resolution} onChange={e => setResolution(e.target.value)} placeholder="4096x3000 px" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Type</label>
-                      <select className="w-full border rounded p-2" value={type} onChange={e => setType(e.target.value)}>
-                        <option value="Area scan">Area scan</option>
-                        <option value="Line scan">Line scan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Model Number</label>
-                      <input className="w-full border rounded p-2" value={model} onChange={e => setModel(e.target.value)} placeholder="ABC1234" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Make</label>
-                      <input className="w-full border rounded p-2" value={make} onChange={e => setMake(e.target.value)} placeholder="VisionTech" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Monochrome or RGB</label>
-                      <select className="w-full border rounded p-2" value={color} onChange={e => setColor(e.target.value)}>
-                        <option value="Monochrome">Monochrome</option>
-                        <option value="RGB">RGB</option>
-                      </select>
-                    </div>
-                    <div>
                       <label className="block text-sm font-medium mb-1">Quantity</label>
                       <input type="number" min={1} className="w-full border rounded p-2" value={qty} onChange={e => setQty(Number(e.target.value))} />
                     </div>
@@ -286,24 +265,7 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               ))}
             </dl>
           ) : (
-            <dl className="text-sm text-gray-700 space-y-1">
-              <div className="flex gap-2 items-center">
-                <dt className="w-24 font-semibold">Resolution:</dt>
-                <dd>{resMatch ? resMatch[1].trim() : '-'}</dd>
-              </div>
-              <div className="flex gap-2 items-center">
-                <dt className="w-24 font-semibold">Type:</dt>
-                <dd>{typeMatch ? typeMatch[1].trim() : '-'}</dd>
-              </div>
-              <div className="flex gap-2 items-center">
-                <dt className="w-24 font-semibold">Model Number:</dt>
-                <dd>{modelMatch ? modelMatch[1].trim() : '-'}</dd>
-              </div>
-              <div className="flex gap-2 items-center">
-                <dt className="w-24 font-semibold">Make:</dt>
-                <dd>{makeMatch ? makeMatch[1].trim() : '-'}</dd>
-              </div>
-            </dl>
+            <div className="text-gray-400 italic text-sm">No description available.</div>
           )}
           {/* Edit Description Dialog */}
           <Dialog open={editDescOpen} onOpenChange={setEditDescOpen}>
@@ -465,32 +427,24 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               </DialogHeader>
               <form className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Vendor Name</label>
-                  <input className="w-full border rounded p-2" value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Enter vendor name" required />
+                  <label className="block text-sm font-medium mb-1">Company Name</label>
+                  <input className="w-full border rounded p-2" value={vendorName} onChange={e => setVendorName(e.target.value)} placeholder="Enter company name" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">PAN Number</label>
-                  <input className="w-full border rounded p-2" value={pan} onChange={e => setPan(e.target.value)} placeholder="Enter PAN number" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">GST No</label>
-                  <input className="w-full border rounded p-2" value={gst} onChange={e => setGst(e.target.value)} placeholder="Enter GST number" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Bank Details</label>
-                  <input className="w-full border rounded p-2" value={bank} onChange={e => setBank(e.target.value)} placeholder="Enter bank details" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">PO Number</label>
-                  <input className="w-full border rounded p-2" value={po} onChange={e => setPo(e.target.value)} placeholder="Enter PO number" />
+                  <label className="block text-sm font-medium mb-1">Price per unit</label>
+                  <input className="w-full border rounded p-2" type="number" min="0" value={vendorCost} onChange={e => setVendorCost(e.target.value)} placeholder="Enter price per unit" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Lead Time</label>
                   <input className="w-full border rounded p-2" value={vendorLeadTime} onChange={e => setVendorLeadTime(e.target.value)} placeholder="Enter lead time" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Cost</label>
-                  <input className="w-full border rounded p-2" type="number" min="0" value={vendorCost} onChange={e => setVendorCost(e.target.value)} placeholder="Enter cost" />
+                  <label className="block text-sm font-medium mb-1">Stock Status</label>
+                  <select className="w-full border rounded p-2" value={color} onChange={e => setColor(e.target.value)}>
+                    <option value="In Stock">In Stock</option>
+                    <option value="Limited Stock">Limited Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                  </select>
                 </div>
               </form>
               <DialogFooter className="mt-4">
