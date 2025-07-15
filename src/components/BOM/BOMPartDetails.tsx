@@ -191,6 +191,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     }
   };
 
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [sortType, setSortType] = useState('price-asc');
+
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -336,14 +339,40 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
         
         {/* Vendor Section with Add Vendor Popup */}
         <div>
-          <div className="flex items-center mb-3">
-            <h4 className="font-medium text-gray-900 mr-2">Vendor</h4>
-            <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Add vendor" onClick={() => setAddVendorOpen(true)}>
-              <Plus size={16} />
-            </button>
+          <div className="flex items-center mb-3 justify-between">
+            <div className="flex items-center">
+              <h4 className="font-medium text-gray-900 mr-2">Vendor Comparison</h4>
+              <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" style={{verticalAlign: 'middle'}} aria-label="Add vendor" onClick={() => setAddVendorOpen(true)}>
+                <Plus size={16} />
+              </button>
+            </div>
+            <div className="relative">
+              <button className="p-1 text-gray-500 hover:text-blue-600 align-middle" aria-label="Sort vendors" onClick={() => setShowSortDropdown(s => !s)}>
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M3 6h18M7 12h10M11 18h6"/></svg>
+              </button>
+              {showSortDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow z-10">
+                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('price-asc'); setShowSortDropdown(false); }}>Price: Low to High</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('price-desc'); setShowSortDropdown(false); }}>Price: High to Low</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('leadtime-asc'); setShowSortDropdown(false); }}>Delivery: Fastest First</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('leadtime-desc'); setShowSortDropdown(false); }}>Delivery: Slowest First</button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-3">
-            {vendors.map((vendor, index) => {
+            {/* Before rendering vendors, sort them based on sortType */}
+            {vendors.sort((a, b) => {
+              const priceA = typeof a.price === 'number' ? a.price : Number(a.price) || 0;
+              const priceB = typeof b.price === 'number' ? b.price : Number(b.price) || 0;
+              const leadA = typeof a.leadTime === 'string' ? parseInt(a.leadTime) || 0 : 0;
+              const leadB = typeof b.leadTime === 'string' ? parseInt(b.leadTime) || 0 : 0;
+              if (sortType === 'price-asc') return priceA - priceB;
+              if (sortType === 'price-desc') return priceB - priceA;
+              if (sortType === 'leadtime-asc') return leadA - leadB;
+              if (sortType === 'leadtime-desc') return leadB - leadA;
+              return 0;
+            }).map((vendor, index) => {
               // Ensure correct types and defaults
               const price = 'price' in vendor ? vendor.price : '';
               const leadTime = 'leadTime' in vendor ? vendor.leadTime : '';
