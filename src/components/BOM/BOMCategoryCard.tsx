@@ -1,9 +1,10 @@
 
-import { ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import BOMPartRow from './BOMPartRow';
+import { useState } from 'react';
 
 interface BOMItem {
   id: string;
@@ -11,6 +12,7 @@ interface BOMItem {
   partId: string;
   description: string;
   category: string;
+  quantity: number;
   vendors: Array<{
     name: string;
     price: number;
@@ -32,18 +34,36 @@ interface BOMCategoryCardProps {
   category: BOMCategory;
   onToggle: () => void;
   onPartClick: (part: BOMItem) => void;
+  onQuantityChange?: (partId: string, newQuantity: number) => void;
+  onDeleteCategory?: (categoryName: string) => void;
 }
 
-const BOMCategoryCard = ({ category, onToggle, onPartClick }: BOMCategoryCardProps) => {
+const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, onDeleteCategory }: BOMCategoryCardProps) => {
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const getStatusCount = (status: string) => {
     return category.items.filter(item => item.status === status).length;
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    setShowConfirm(false);
+    onDeleteCategory?.(category.name);
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirm(false);
+  };
+
   return (
-    <Card>
+    <Card className="relative">
       <Collapsible open={category.isExpanded} onOpenChange={onToggle}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
+          <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors relative">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {category.isExpanded ? (
@@ -57,8 +77,7 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick }: BOMCategoryCardPro
                   <p className="text-sm text-gray-600">{category.items.length} parts</p>
                 </div>
               </div>
-              
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Badge variant="outline" className="text-green-600 border-green-200">
                   {getStatusCount('received')} received
                 </Badge>
@@ -68,11 +87,30 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick }: BOMCategoryCardPro
                 <Badge variant="outline" className="text-red-600 border-red-200">
                   {getStatusCount('not-ordered')} pending
                 </Badge>
+                {/* Trash icon button */}
+                <button
+                  onClick={handleDeleteClick}
+                  className="ml-2 p-1 bg-transparent border-none outline-none text-red-500 hover:bg-red-50 rounded-full"
+                  style={{ appearance: 'none', boxShadow: 'none' }}
+                  aria-label="Delete category"
+                  tabIndex={-1}
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
             </div>
+            {/* Confirmation popup */}
+            {showConfirm && (
+              <div className="absolute right-2 top-10 z-50 mt-2 bg-white border border-gray-300 rounded shadow p-2 text-xs flex flex-col items-center min-w-[150px]">
+                <div className="mb-2">Do you want to delete this category?</div>
+                <div className="flex gap-2">
+                  <button onClick={handleConfirmDelete} className="px-2 py-0.5 bg-red-500 text-white rounded text-xs">Yes</button>
+                  <button onClick={handleCancelDelete} className="px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">No</button>
+                </div>
+              </div>
+            )}
           </CardHeader>
         </CollapsibleTrigger>
-        
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-2">
@@ -81,6 +119,7 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick }: BOMCategoryCardPro
                   key={item.id}
                   part={item}
                   onClick={() => onPartClick(item)}
+                  onQuantityChange={onQuantityChange}
                 />
               ))}
             </div>
