@@ -173,14 +173,13 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     setEditVendorIdx(idx);
     const v = vendors[idx];
     setEditVendorName(v.name || '');
-    setEditPan('pan' in v ? v.pan || '' : '');
-    setEditGst('gst' in v ? v.gst || '' : '');
-    setEditBank('bank' in v ? v.bank || '' : '');
-    setEditPo('po' in v ? v.po || '' : '');
+    setEditPan('price' in v ? v.price : '');
+    setEditGst('leadTime' in v ? v.leadTime : '');
+    setEditBank('availability' in v ? v.availability : 'In Stock');
   };
   const handleEditVendorSave = () => {
     if (editVendorIdx === undefined) return;
-    setVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, pan: editPan, gst: editGst, bank: editBank, po: editPo } : v));
+    setVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, price: Number(editPan), leadTime: editGst, availability: editBank } : v));
     setEditVendorIdx(undefined);
   };
 
@@ -371,9 +370,14 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                       const newQty = qty + 1;
                       setVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
                     }}>+</button>
-                    <button className="ml-auto text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => setVendors(vendors.filter((_, i) => i !== index))}>
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button className="text-gray-500 hover:bg-gray-100 rounded-full p-2" onClick={() => handleEditVendorOpen(index)}>
+                        <Pencil size={18} />
+                      </button>
+                      <button className="text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => setVendors(vendors.filter((_, i) => i !== index))}>
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -386,24 +390,24 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                 </DialogHeader>
                 <form className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Vendor Name</label>
-                    <input className="w-full border rounded p-2" value={editVendorName} onChange={e => setEditVendorName(e.target.value)} placeholder="Enter vendor name" required />
+                    <label className="block text-sm font-medium mb-1">Company Name</label>
+                    <input className="w-full border rounded p-2" value={editVendorName} onChange={e => setEditVendorName(e.target.value)} placeholder="Enter company name" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">PAN Number</label>
-                    <input className="w-full border rounded p-2" value={editPan} onChange={e => setEditPan(e.target.value)} placeholder="Enter PAN number" />
+                    <label className="block text-sm font-medium mb-1">Price per unit</label>
+                    <input className="w-full border rounded p-2" type="number" min="0" value={editPan} onChange={e => setEditPan(e.target.value)} placeholder="Enter price per unit" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">GST No</label>
-                    <input className="w-full border rounded p-2" value={editGst} onChange={e => setEditGst(e.target.value)} placeholder="Enter GST number" />
+                    <label className="block text-sm font-medium mb-1">Lead Time</label>
+                    <input className="w-full border rounded p-2" value={editGst} onChange={e => setEditGst(e.target.value)} placeholder="Enter lead time" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Bank Details</label>
-                    <input className="w-full border rounded p-2" value={editBank} onChange={e => setEditBank(e.target.value)} placeholder="Enter bank details" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">PO Number</label>
-                    <input className="w-full border rounded p-2" value={editPo} onChange={e => setEditPo(e.target.value)} placeholder="Enter PO number" />
+                    <label className="block text-sm font-medium mb-1">Stock Status</label>
+                    <select className="w-full border rounded p-2" value={editBank} onChange={e => setEditBank(e.target.value)}>
+                      <option value="In Stock">In Stock</option>
+                      <option value="Limited Stock">Limited Stock</option>
+                      <option value="Out of Stock">Out of Stock</option>
+                    </select>
                   </div>
                 </form>
                 <DialogFooter className="mt-4 flex gap-2">
