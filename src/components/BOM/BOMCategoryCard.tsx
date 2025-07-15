@@ -86,7 +86,7 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, on
                   {getStatusCount('ordered')} ordered
                 </Badge>
                 <Badge variant="outline" className="text-red-600 border-red-200">
-                  {getStatusCount('not-ordered')} pending
+                  {getStatusCount('not-ordered')} Not Ordered
                 </Badge>
                 {/* Trash icon button */}
                 <button
