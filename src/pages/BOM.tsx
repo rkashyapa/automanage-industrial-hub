@@ -177,14 +177,27 @@ const BOM = () => {
     );
   };
 
-  const filteredCategories = categories.map(category => ({
-    ...category,
-    items: category.items.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.partId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })).filter(category => category.items.length > 0);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Filtered categories based on search and filter selections
+  const filteredCategories = categories
+    .map(category => ({
+      ...category,
+      items: category.items.filter(item => {
+        const matchesSearch =
+          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.partId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus =
+          selectedStatuses.length === 0 || selectedStatuses.includes(item.status);
+        const matchesCategory =
+          selectedCategories.length === 0 || selectedCategories.includes(category.name);
+        return matchesSearch && matchesStatus && matchesCategory;
+      })
+    }))
+    .filter(category => category.items.length > 0);
 
   const [addPartOpen, setAddPartOpen] = useState(false);
   const [newPart, setNewPart] = useState({ name: '', partId: '', quantity: 1, descriptionKV: [{ value: '', key: '' }] });
@@ -325,7 +338,7 @@ const BOM = () => {
           </div>
           
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setFilterOpen(true)}>
               <Filter size={16} className="mr-2" />
               Filter
             </Button>
@@ -335,6 +348,56 @@ const BOM = () => {
             </Button>
           </div>
         </div>
+
+        {filterOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+            <div className="bg-white rounded shadow-lg p-6 min-w-[350px] w-full max-w-xs text-left">
+              <div className="mb-4 text-lg font-semibold text-center">Filter Parts</div>
+              <div className="mb-4">
+                <div className="font-semibold text-sm mb-2">Status</div>
+                {['ordered', 'received', 'not-ordered'].map(status => (
+                  <label key={status} className="flex items-center gap-2 mb-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedStatuses.includes(status)}
+                      onChange={e => {
+                        setSelectedStatuses(prev =>
+                          e.target.checked
+                            ? [...prev, status]
+                            : prev.filter(s => s !== status)
+                        );
+                      }}
+                    />
+                    {status === 'not-ordered' ? 'Not Ordered' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </label>
+                ))}
+              </div>
+              <div className="mb-4">
+                <div className="font-semibold text-sm mb-2">Category</div>
+                {categories.map(cat => (
+                  <label key={cat.name} className="flex items-center gap-2 mb-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(cat.name)}
+                      onChange={e => {
+                        setSelectedCategories(prev =>
+                          e.target.checked
+                            ? [...prev, cat.name]
+                            : prev.filter(c => c !== cat.name)
+                        );
+                      }}
+                    />
+                    {cat.name}
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={() => setFilterOpen(false)}>Apply</button>
+                <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => { setSelectedStatuses([]); setSelectedCategories([]); setFilterOpen(false); }}>Clear</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add Part Dialog */}
         {addPartOpen && (
@@ -433,6 +496,7 @@ const BOM = () => {
                   + Add Row
                 </button>
               </div>
+              <div className="font-semibold text-sm mb-1 text-left">Quantity</div>
               <input className="w-full border rounded p-2 mb-4" type="number" min={1} value={newPart.quantity} onChange={e => setNewPart({ ...newPart, quantity: Number(e.target.value), descriptionKV: newPart.descriptionKV })} placeholder="Quantity" />
               <div className="flex justify-center gap-2">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart && !addingNewCategory && !newPart.name.trim() && !newPart.partId.trim()}>Add</button>
