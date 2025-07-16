@@ -206,6 +206,9 @@ const BOM = () => {
     setCategoryForPart(null);
   };
 
+  const allPartIds = categories.flatMap(cat => cat.items.map(item => item.partId.toLowerCase()));
+  const isPartIdUnique = newPart.partId.trim() && !allPartIds.includes(newPart.partId.trim().toLowerCase());
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -286,6 +289,9 @@ const BOM = () => {
               )}
               <input className="w-full border rounded p-2 mb-2" value={newPart.name} onChange={e => setNewPart({ ...newPart, name: e.target.value, descriptionKV: newPart.descriptionKV })} placeholder="Part name" />
               <input className="w-full border rounded p-2 mb-2" value={newPart.partId} onChange={e => setNewPart({ ...newPart, partId: e.target.value, descriptionKV: newPart.descriptionKV })} placeholder="Part ID" />
+              {newPart.partId && !isPartIdUnique && (
+                <div style={{ color: 'red', fontSize: 12, marginBottom: 8 }}>Part ID must be unique</div>
+              )}
               {/* Description Key-Value Inputs */}
               <div className="mb-2">
                 <div className="font-semibold text-sm mb-1 text-left">Description</div>
@@ -339,7 +345,7 @@ const BOM = () => {
               </div>
               <input className="w-full border rounded p-2 mb-4" type="number" min={1} value={newPart.quantity} onChange={e => setNewPart({ ...newPart, quantity: Number(e.target.value), descriptionKV: newPart.descriptionKV })} placeholder="Quantity" />
               <div className="flex justify-center gap-2">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart || !newPart.name.trim() || !newPart.partId.trim()}>Add</button>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart || !newPart.name.trim() || !newPart.partId.trim() || !isPartIdUnique}>Add</button>
                 <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setAddPartOpen(false)}>Cancel</button>
               </div>
             </div>
