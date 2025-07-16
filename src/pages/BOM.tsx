@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BOMHeader from '@/components/BOM/BOMHeader';
 import BOMCategoryCard from '@/components/BOM/BOMCategoryCard';
 import BOMPartDetails from '@/components/BOM/BOMPartDetails';
+import { saveAs } from 'file-saver';
 
 interface BOMItem {
   id: string;
@@ -209,6 +210,50 @@ const BOM = () => {
   const allPartIds = categories.flatMap(cat => cat.items.map(item => item.partId.toLowerCase()));
   const isPartIdUnique = newPart.partId.trim() && !allPartIds.includes(newPart.partId.trim().toLowerCase());
 
+  // Static project info (from BOMHeader)
+  const projectId = 'PRJ-2024-001';
+  const projectName = 'Vision System Alpha';
+  const clientName = 'Manufacturing Corp';
+
+  function handleExportCSV() {
+    const rows = [
+      [
+        'Project ID',
+        'Project Name',
+        'Client Name',
+        'Part ID',
+        'Part Name',
+        'Category',
+        'Quantity',
+        'Status',
+        'Expected Delivery',
+        'Selected Vendor',
+        'Vendor Price (₹)'
+      ]
+    ];
+    categories.forEach(cat => {
+      cat.items.forEach(part => {
+        const vendor = part.finalizedVendor || {};
+        rows.push([
+          projectId,
+          projectName,
+          clientName,
+          part.partId,
+          part.name,
+          part.category,
+          part.quantity,
+          part.status,
+          part.expectedDelivery || '',
+          vendor.name || '',
+          vendor.price !== undefined ? vendor.price : ''
+        ]);
+      });
+    });
+    const csvContent = rows.map(row => row.map(String).map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    saveAs(blob, 'bom_export.csv');
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -256,7 +301,7 @@ const BOM = () => {
               <Plus size={16} className="mr-2" />
               Add Category
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
               <Download size={16} className="mr-2" />
               Export
             </Button>
