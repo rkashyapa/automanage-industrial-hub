@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import BOMHeader from '@/components/BOM/BOMHeader';
 import BOMCategoryCard from '@/components/BOM/BOMCategoryCard';
 import BOMPartDetails from '@/components/BOM/BOMPartDetails';
+import { saveAs } from 'file-saver';
 
 interface BOMItem {
   id: string;
@@ -233,6 +234,63 @@ const BOM = () => {
     }));
   };
 
+  // Hardcoded project info (should be dynamic in a real app)
+  const projectId = 'PRJ-2024-001';
+  const projectName = 'Vision System Alpha';
+  const clientName = 'Manufacturing Corp';
+
+  // CSV Export Handler
+  const handleExportCSV = () => {
+    const headers = [
+      'Project ID',
+      'Project Name',
+      'Client Name',
+      'Part ID',
+      'Part Name',
+      'Category',
+      'Quantity',
+      'Status',
+      'Expected Delivery',
+      'Selected Vendor',
+      'Vendor Price (₹)'
+    ];
+    const rows = [];
+    categories.forEach(category => {
+      category.items.forEach(item => {
+        rows.push([
+          projectId,
+          projectName,
+          clientName,
+          item.partId || '',
+          item.name || '',
+          category.name || '',
+          item.quantity || '',
+          item.status === 'not-ordered' ? 'Pending' : item.status.charAt(0).toUpperCase() + item.status.slice(1),
+          item.expectedDelivery || '',
+          item.finalizedVendor?.name || '',
+          item.finalizedVendor?.price !== undefined ? item.finalizedVendor.price : ''
+        ]);
+      });
+    });
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Use file-saver if available, else fallback
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, 'bom_export.csv');
+    } else {
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute('download', 'bom_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -252,7 +310,7 @@ const BOM = () => {
                 className="pl-10"
               />
             </div>
-            <Button variant="outline" size="sm" className="ml-2" onClick={() => setAddPartOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setAddPartOpen(true)}>
               <Plus size={16} className="mr-2" />
               Add Part
             </Button>
@@ -263,7 +321,7 @@ const BOM = () => {
               <Filter size={16} className="mr-2" />
               Filter
             </Button>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
               <Download size={16} className="mr-2" />
               Export
             </Button>
