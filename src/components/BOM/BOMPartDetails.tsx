@@ -80,9 +80,15 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
   const [vendorName, setVendorName] = useState('');
   const [vendorLeadTime, setVendorLeadTime] = useState('');
   const [vendorCost, setVendorCost] = useState('');
-  type Vendor =
-    | { name: string; price: number; leadTime: string; availability: string }
-    | { name: string; pan?: string; gst?: string; bank?: string; po?: string };
+  // Update Vendor type to include documents
+  type Vendor = {
+    name: string;
+    price?: number;
+    leadTime?: string;
+    availability?: string;
+    qty?: number;
+    documents?: string[];
+  };
   const [vendors, setVendors] = useState<Vendor[]>(part.vendors || []);
   const [partState, setPartState] = useState(part);
 
@@ -119,8 +125,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
   const [showDeletePartConfirm, setShowDeletePartConfirm] = useState(false);
   const [docDeleteMode, setDocDeleteMode] = useState(false);
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
-  // Use partState.documents for per-part documents
-  const documents = partState?.documents || [];
+  // Combine part-level and all vendor documents for the Documents section
+  const vendorDocs = vendors.flatMap(v => v.documents || []);
+  const documents = Array.from(new Set([...(partState?.documents || []), ...vendorDocs]));
   const setDocuments = (docs: string[]) => {
     setPartState(prev => prev ? { ...prev, documents: docs } : prev);
     if (typeof onUpdatePart === 'function' && partState) {
@@ -158,6 +165,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     setEditOpen(false);
   };
 
+  // Add state for Add Vendor documents
+  const [addVendorDocs, setAddVendorDocs] = useState<string[]>([]);
+
   const handleAddVendor = () => {
     if (!vendorName.trim()) return;
     const newVendors = [
@@ -168,6 +178,7 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
         leadTime: vendorLeadTime,
         availability: color,
         qty: 1,
+        documents: addVendorDocs,
       },
     ];
     updateVendors(newVendors);
@@ -175,9 +186,12 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     setVendorLeadTime('');
     setVendorCost('');
     setColor('In Stock');
+    setAddVendorDocs([]);
     setAddVendorOpen(false);
   };
 
+  // In handleEditVendorOpen, also set a local state for vendor documents
+  const [editVendorDocs, setEditVendorDocs] = useState<string[]>([]);
   const handleEditVendorOpen = (idx: number) => {
     setEditVendorIdx(idx);
     const v = vendors[idx];
@@ -185,10 +199,31 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
     setEditPan('price' in v ? v.price : '');
     setEditGst('leadTime' in v ? v.leadTime : '');
     setEditBank('availability' in v ? v.availability : 'In Stock');
+    setEditVendorDocs(v.documents || []);
   };
+  // Add state for confirming vendor doc deletion
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
   const handleEditVendorSave = () => {
     if (editVendorIdx === undefined) return;
-    updateVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, price: Number(editPan), leadTime: editGst, availability: editBank } : v));
+    // Find docs that were removed from this vendor
+    const prevDocs = vendors[editVendorIdx]?.documents || [];
+    const removedDocs = prevDocs.filter(doc => !editVendorDocs.includes(doc));
+    // For each removed doc, check if it exists in any other vendor or in partState.documents
+    let updatedPartDocs = partState?.documents || [];
+    removedDocs.forEach(doc => {
+      const inOtherVendor = vendors.some((v, i) => i !== editVendorIdx && v.documents && v.documents.includes(doc));
+      if (!inOtherVendor && updatedPartDocs.includes(doc)) {
+        updatedPartDocs = updatedPartDocs.filter(d => d !== doc);
+      }
+    });
+    // Save vendors and update part documents if changed
+    updateVendors(vendors.map((v, i) => i === editVendorIdx ? { ...v, name: editVendorName, price: Number(editPan), leadTime: editGst, availability: editBank, documents: editVendorDocs } : v));
+    if (updatedPartDocs !== (partState?.documents || [])) {
+      setPartState(prev => prev ? { ...prev, documents: updatedPartDocs } : prev);
+      if (typeof onUpdatePart === 'function' && partState) {
+        onUpdatePart({ ...partState, documents: updatedPartDocs });
+      }
+    }
     setEditVendorIdx(undefined);
   };
 
@@ -202,6 +237,10 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
 
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [sortType, setSortType] = useState('price-asc');
+  // Add state to track which vendor's documents are open
+  const [openVendorDocsIdx, setOpenVendorDocsIdx] = useState<number | null>(null);
+  // Add state to track the selected vendor index
+  const [selectedVendorIdx, setSelectedVendorIdx] = useState<number | null>(null);
 
   return (
     <Card className="h-fit">
@@ -246,9 +285,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
             <button className="p-1 text-gray-500 hover:text-red-600 align-middle" aria-label="Delete part" onClick={() => onDeletePart && partState && onDeletePart(partState.id)}>
               <Trash2 size={18} />
             </button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X size={16} />
-            </Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X size={16} />
+          </Button>
           </div>
         </div>
       </CardHeader>
@@ -274,8 +313,8 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
             <dl className="text-sm text-gray-700 space-y-1">
               {partState.descriptionKV.map((kv, idx) => (
                 <div className="flex gap-2 items-center" key={idx}>
-                  <dt className="w-24 font-bold text-left">{kv.value}</dt>
-                  <dd className="flex-1 text-left">{kv.key}</dd>
+                  <dt className="w-24 font-bold text-left">{kv.key}</dt>
+                  <dd className="flex-1 text-left font-normal">{kv.value}</dd>
                 </div>
               ))}
             </dl>
@@ -292,16 +331,16 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                 {descKVEdit.map((kv, idx) => (
                   <div key={idx} className="flex gap-2 mb-1 items-center">
                     <input
-                      className="border rounded p-2 font-bold w-1/2"
-                      placeholder="Value (bold, left)"
-                      value={kv.value}
-                      onChange={e => setDescKVEdit(descKVEdit.map((item, i) => i === idx ? { ...item, value: e.target.value } : item))}
-                    />
-                    <input
-                      className="border rounded p-2 w-1/2"
-                      placeholder="Key (right)"
+                      className="border rounded p-2 w-1/2 font-normal"
+                      placeholder="Key"
                       value={kv.key}
                       onChange={e => setDescKVEdit(descKVEdit.map((item, i) => i === idx ? { ...item, key: e.target.value } : item))}
+                    />
+                    <input
+                      className="border rounded p-2 w-1/2 font-normal"
+                      placeholder="Value"
+                      value={kv.value}
+                      onChange={e => setDescKVEdit(descKVEdit.map((item, i) => i === idx ? { ...item, value: e.target.value } : item))}
                     />
                     <button
                       className="text-red-500 px-2"
@@ -369,10 +408,10 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                   <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('price-desc'); setShowSortDropdown(false); }}>Price: High to Low</button>
                   <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('leadtime-asc'); setShowSortDropdown(false); }}>Delivery: Fastest First</button>
                   <button className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onClick={() => { setSortType('leadtime-desc'); setShowSortDropdown(false); }}>Delivery: Slowest First</button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
+        </div>
           <div className="space-y-3">
             {/* Before rendering vendors, sort them based on sortType */}
             {vendors.sort((a, b) => {
@@ -392,7 +431,10 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               const availability = 'availability' in vendor ? vendor.availability : 'In Stock';
               const qty = 'qty' in vendor ? vendor.qty : 1;
               return (
-                <div key={index} className="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 relative">
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-lg p-3 flex flex-col gap-2 relative"
+                >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-base">{vendor.name}</span>
                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{availability}</span>
@@ -404,23 +446,41 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500">Qty:</span>
                     <button className="px-2 py-1 border rounded text-sm" onClick={() => {
-                      const newQty = qty - 1;
+                      const newQty = vendor.qty - 1;
                       if (newQty > 0) updateVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
                     }}>-</button>
                     <span className="font-medium text-sm">{qty}</span>
                     <button className="px-2 py-1 border rounded text-sm" onClick={() => {
-                      const newQty = qty + 1;
+                      const newQty = vendor.qty + 1;
                       updateVendors(vendors.map((v, i) => i === index ? { ...v, qty: newQty } : v));
                     }}>+</button>
                     <div className="ml-auto flex items-center gap-2">
                       <button className="text-gray-500 hover:bg-gray-100 rounded-full p-2" onClick={() => handleEditVendorOpen(index)}>
                         <Pencil size={18} />
-                    </button>
+                      </button>
                       <button className="text-red-500 hover:bg-red-100 rounded-full p-2" onClick={() => updateVendors(vendors.filter((_, i) => i !== index))}>
                         <Trash2 size={18} />
-                    </button>
+                      </button>
+                      <button className="text-blue-600 hover:underline text-xs ml-2" onClick={() => setOpenVendorDocsIdx(openVendorDocsIdx === index ? null : index)}>
+                        {openVendorDocsIdx === index ? 'Hide Documents' : 'View Documents'}
+                      </button>
                     </div>
                   </div>
+                  {/* Vendor Documents Dropdown */}
+                  {openVendorDocsIdx === index && (
+                    <div className="mt-2 border rounded bg-gray-50 p-2">
+                      <div className="text-xs font-semibold mb-1 text-gray-700">Vendor Documents:</div>
+                      {Array.isArray(vendor.documents) && vendor.documents.length > 0 ? (
+                        <ul className="max-h-24 overflow-y-auto text-xs">
+                          {vendor.documents.map((doc, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-gray-800"><FileText size={14} className="text-blue-600" />{doc}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="text-xs text-gray-400 italic">No documents uploaded yet.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -452,6 +512,33 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                     </select>
                   </div>
                 </form>
+                <div className="mt-3 text-left">
+                  <div className="text-xs font-semibold mb-1 text-gray-700">Vendor Documents:</div>
+                  {editVendorDocs.length > 0 ? (
+                    <ul className="border rounded p-2 bg-gray-50 max-h-24 overflow-y-auto text-xs">
+                      {editVendorDocs.map((doc, idx) => (
+                        <li key={idx} className="flex items-center gap-2 text-gray-800">
+                          <FileText size={14} className="text-blue-600" />{doc}
+                          <button
+                            className="ml-auto text-red-500 hover:text-red-700 text-xs px-2"
+                            title="Delete document"
+                            onClick={e => { e.preventDefault(); setDocToDelete(doc); }}
+                          >×</button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-gray-400 italic">No documents uploaded yet.</div>
+                  )}
+                  <label className="cursor-pointer mt-2 inline-block">
+                    <input type="file" multiple className="hidden" onChange={e => {
+                      if (e.target.files) {
+                        setEditVendorDocs([...editVendorDocs, ...Array.from(e.target.files).map(f => f.name)]);
+                      }
+                    }} />
+                    <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Add Documents</span>
+                  </label>
+                </div>
                 <DialogFooter className="mt-4 flex gap-2">
                   <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleEditVendorSave} disabled={!editVendorName.trim()}>Save</button>
                   <button type="button" className="px-4 py-2 bg-red-600 text-white rounded" onClick={() => setShowDeleteConfirm(true)}>Delete Vendor</button>
@@ -473,11 +560,29 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                     </div>
                   </div>
                 )}
+                {/* Confirmation dialog for deleting vendor doc */}
+                {docToDelete && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+                    <div className="bg-white rounded shadow-lg p-6 min-w-[250px] text-center">
+                      <div className="mb-4 text-gray-800">Are you sure you want to delete this document from this vendor?</div>
+                      <div className="flex justify-center gap-4">
+                        <button className="px-4 py-1 bg-red-600 text-white rounded" onClick={() => {
+                          setEditVendorDocs(editVendorDocs.filter(d => d !== docToDelete));
+                          setDocToDelete(null);
+                        }}>Yes</button>
+                        <button className="px-4 py-1 bg-gray-200 text-gray-700 rounded" onClick={() => setDocToDelete(null)}>No</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </DialogContent>
             </Dialog>
           </div>
           {/* Add Vendor Popup */}
-          <Dialog open={addVendorOpen} onOpenChange={setAddVendorOpen}>
+          <Dialog open={addVendorOpen} onOpenChange={v => {
+            setAddVendorOpen(v);
+            if (!v) setAddVendorDocs([]);
+          }}>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Vendor</DialogTitle>
@@ -502,12 +607,34 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                     <option value="Limited Stock">Limited Stock</option>
                     <option value="Out of Stock">Out of Stock</option>
                   </select>
-                </div>
+              </div>
               </form>
-              <DialogFooter className="mt-4">
-                <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded mr-2" onClick={handleAddVendor} disabled={!vendorName.trim()}>Save</button>
-                <button type="button" className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setAddVendorOpen(false)}>Cancel</button>
+              <DialogFooter className="mt-4 flex gap-2 items-center">
+                <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddVendor} disabled={!vendorName.trim()}>Save</button>
+                {/* Add Documents Button */}
+                <label className="cursor-pointer">
+                  <input type="file" multiple className="hidden" onChange={e => {
+                    if (e.target.files) {
+                      setAddVendorDocs(prev => [...prev, ...Array.from(e.target.files).map(f => f.name)]);
+                    }
+                  }} />
+                  <span className="px-4 py-2 bg-gray-200 text-gray-700 rounded ml-2 inline-block hover:bg-gray-300">Add Documents</span>
+                </label>
+                <button type="button" className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => { setAddVendorOpen(false); setAddVendorDocs([]); }}>Cancel</button>
               </DialogFooter>
+              {/* Show uploaded documents in Add Vendor dialog */}
+              {addVendorDocs.length > 0 ? (
+                <div className="mt-3 text-left">
+                  <div className="text-xs font-semibold mb-1 text-gray-700">Uploaded Documents:</div>
+                  <ul className="border rounded p-2 bg-gray-50 max-h-24 overflow-y-auto text-xs">
+                    {addVendorDocs.map((doc, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-gray-800"><FileText size={14} className="text-blue-600" />{doc}</li>
+                    ))}
+                  </ul>
+          </div>
+              ) : (
+                <div className="mt-3 text-xs text-gray-400 italic text-left">No documents uploaded yet.</div>
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -521,18 +648,6 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               <div className="flex w-full items-center justify-between font-medium text-gray-900 px-0 py-2 bg-transparent border-none cursor-pointer">
                 <span>Documents</span>
                 <div className="flex items-center gap-2">
-                  <label className="cursor-pointer">
-                    <input type="file" multiple className="hidden" onChange={handleUploadDocs} />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1 px-3 py-1.5 border-blue-600 text-blue-700 hover:bg-blue-50 hover:border-blue-700 focus:ring-2 focus:ring-blue-200"
-                      asChild
-                    >
-                      <span><UploadIcon size={16} className="mr-1" />Upload Document(s)</span>
-                    </Button>
-                  </label>
                   <button
                     className={`p-1 rounded-full ${docDeleteMode ? 'bg-gray-200 text-gray-700' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
                     style={{ minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -545,6 +660,9 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                   >
                     <Trash2 size={18} />
                   </button>
+                  <span className="transition-transform duration-200" style={{ transform: 'rotate(var(--collapsible-arrow, 0deg))' }}>
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
                 </div>
               </div>
             </CollapsibleTrigger>
@@ -605,3 +723,4 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
 };
 
 export default BOMPartDetails;
+

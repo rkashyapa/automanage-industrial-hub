@@ -188,22 +188,49 @@ const BOM = () => {
   const [addPartOpen, setAddPartOpen] = useState(false);
   const [newPart, setNewPart] = useState({ name: '', partId: '', quantity: 1, descriptionKV: [{ value: '', key: '' }] });
   const [categoryForPart, setCategoryForPart] = useState<string | null>(null);
+  const [addingNewCategory, setAddingNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const handleAddPart = () => {
-    if (!categoryForPart) return;
+    if (!categoryForPart && !addingNewCategory) return;
+    let finalCategory = categoryForPart;
+    let updatedCategories = categories;
+    if (addingNewCategory && newCategoryName.trim()) {
+      finalCategory = newCategoryName.trim();
+      // Add new category if it doesn't exist
+      if (!categories.some(cat => cat.name === finalCategory)) {
+        updatedCategories = [...categories, { name: finalCategory, isExpanded: true, items: [] }];
+      }
+    }
     // Build description string from key-value pairs
     const descriptionString = newPart.descriptionKV
       .filter(kv => kv.value.trim() && kv.key.trim())
       .map(kv => `• ${kv.value}: ${kv.key}`)
       .join('\n');
-    setCategories(categories.map(cat =>
-      cat.name === categoryForPart
-        ? { ...cat, items: [...cat.items, { id: Date.now().toString(), name: newPart.name, partId: newPart.partId, description: descriptionString, descriptionKV: newPart.descriptionKV, category: categoryForPart, quantity: newPart.quantity, vendors: [], status: 'not-ordered' }] }
+    setCategories(updatedCategories.map(cat =>
+      cat.name === finalCategory
+        ? { ...cat, items: [...cat.items, { id: Date.now().toString(), name: newPart.name, partId: newPart.partId, description: descriptionString, descriptionKV: newPart.descriptionKV, category: finalCategory, quantity: newPart.quantity, vendors: [], status: 'not-ordered' }] }
         : cat
     ));
     setNewPart({ name: '', partId: '', quantity: 1, descriptionKV: [{ value: '', key: '' }] });
     setAddPartOpen(false);
     setCategoryForPart(null);
+    setAddingNewCategory(false);
+    setNewCategoryName('');
+  };
+
+  const handleEditCategory = (oldName: string, newName: string) => {
+    setCategories(prev => prev.map(cat => {
+      if (cat.name === oldName) {
+        return {
+          ...cat,
+          name: newName,
+          items: cat.items.map(item => ({ ...item, category: newName }))
+        };
+      } else {
+        return cat;
+      }
+    }));
   };
 
   return (
@@ -236,23 +263,6 @@ const BOM = () => {
               <Filter size={16} className="mr-2" />
               Filter
             </Button>
-            <label>
-              <input type="file" multiple className="hidden" onChange={handleUploadDocs} />
-              <Button asChild variant="outline" size="sm">
-                <span><Upload size={16} className="mr-2" />Upload Document(s)</span>
-              </Button>
-            </label>
-            {uploadedDocs.length > 0 && (
-              <ul className="text-xs mt-2 ml-1">
-                {uploadedDocs.map((file, idx) => (
-                  <li key={idx}>{file.name}</li>
-                ))}
-              </ul>
-            )}
-            <Button variant="outline" size="sm">
-              <Plus size={16} className="mr-2" />
-              Add Category
-            </Button>
             <Button variant="outline" size="sm">
               <Download size={16} className="mr-2" />
               Export
@@ -265,20 +275,37 @@ const BOM = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
             <div className="bg-white rounded shadow-lg p-6 min-w-[350px] text-center">
               <div className="mb-4 text-lg font-semibold">Add Part</div>
-              <select className="w-full border rounded p-2 mb-2" value={categoryForPart ?? ''} onChange={e => setCategoryForPart(e.target.value)}>
+              <select className="w-full border rounded p-2 mb-2" value={addingNewCategory ? '+new' : (categoryForPart ?? '')} onChange={e => {
+                if (e.target.value === '+new') {
+                  setAddingNewCategory(true);
+                  setCategoryForPart(null);
+                } else {
+                  setAddingNewCategory(false);
+                  setCategoryForPart(e.target.value);
+                }
+              }}>
                 <option value="">Select Category</option>
                 {categories.map(cat => (
                   <option key={cat.name} value={cat.name}>{cat.name}</option>
                 ))}
+                <option value="+new">+ Add New Category</option>
               </select>
-              {categoryForPart && (
+              {addingNewCategory && (
+                <input
+                  className="w-full border rounded p-2 mb-2"
+                  value={newCategoryName}
+                  onChange={e => setNewCategoryName(e.target.value)}
+                  placeholder="Enter new category name"
+                />
+              )}
+              {(categoryForPart || (addingNewCategory && newCategoryName.trim())) && (
                 <div className="mb-2 text-left">
-                  <div className="font-semibold text-sm mb-1">Parts in {categoryForPart}:</div>
+                  <div className="font-semibold text-sm mb-1">Parts in {addingNewCategory ? newCategoryName || '...' : categoryForPart}:</div>
                   <ul className="border rounded p-2 bg-gray-50 max-h-32 overflow-y-auto text-xs">
-                    {categories.find(cat => cat.name === categoryForPart)?.items.map(part => (
+                    {(categories.find(cat => cat.name === (addingNewCategory ? newCategoryName : categoryForPart))?.items || []).map(part => (
                       <li key={part.id}>{part.name} ({part.partId})</li>
                     ))}
-                    {categories.find(cat => cat.name === categoryForPart)?.items.length === 0 && (
+                    {((categories.find(cat => cat.name === (addingNewCategory ? newCategoryName : categoryForPart))?.items.length || 0) === 0) && (
                       <li className="text-gray-400">No parts yet.</li>
                     )}
                   </ul>
@@ -292,21 +319,21 @@ const BOM = () => {
                 {newPart.descriptionKV.map((kv, idx) => (
                   <div key={idx} className="flex gap-2 mb-1">
                     <input
-                      className="border rounded p-2 font-bold w-1/2"
-                      placeholder="Value (bold, left)"
-                      value={kv.value}
-                      onChange={e => setNewPart({
-                        ...newPart,
-                        descriptionKV: newPart.descriptionKV.map((item, i) => i === idx ? { ...item, value: e.target.value } : item)
-                      })}
-                    />
-                    <input
-                      className="border rounded p-2 w-1/2"
-                      placeholder="Key (right)"
+                      className="border rounded p-2 w-1/2 font-normal"
+                      placeholder="Key"
                       value={kv.key}
                       onChange={e => setNewPart({
                         ...newPart,
                         descriptionKV: newPart.descriptionKV.map((item, i) => i === idx ? { ...item, key: e.target.value } : item)
+                      })}
+                    />
+                    <input
+                      className="border rounded p-2 w-1/2 font-normal"
+                      placeholder="Value"
+                      value={kv.value}
+                      onChange={e => setNewPart({
+                        ...newPart,
+                        descriptionKV: newPart.descriptionKV.map((item, i) => i === idx ? { ...item, value: e.target.value } : item)
                       })}
                     />
                     <button
@@ -339,7 +366,7 @@ const BOM = () => {
               </div>
               <input className="w-full border rounded p-2 mb-4" type="number" min={1} value={newPart.quantity} onChange={e => setNewPart({ ...newPart, quantity: Number(e.target.value), descriptionKV: newPart.descriptionKV })} placeholder="Quantity" />
               <div className="flex justify-center gap-2">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart || !newPart.name.trim() || !newPart.partId.trim()}>Add</button>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddPart} disabled={!categoryForPart && !addingNewCategory && !newPart.name.trim() && !newPart.partId.trim()}>Add</button>
                 <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded" onClick={() => setAddPartOpen(false)}>Cancel</button>
               </div>
             </div>
@@ -364,6 +391,7 @@ const BOM = () => {
                   ));
                   if (selectedPart && selectedPart.id === partId) setSelectedPart(null);
                 }}
+                onEditCategory={handleEditCategory}
               />
             ))}
             

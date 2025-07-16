@@ -147,9 +147,9 @@ const BOMPartRow = ({ part, onClick, onQuantityChange, allVendors = [], onDelete
                 ? `Vendor: ${part.finalizedVendor.name}`
                 : 'No vendor selected'}
             </div>
-            <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500">
               Qty: {part.quantity}
-            </div>
+              </div>
           </div>
           {/* Only the status badge remains here */}
           {getStatusBadge(part.status)}

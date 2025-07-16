@@ -1,5 +1,5 @@
 
-import { ChevronDown, ChevronRight, Package, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package, Trash2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -37,10 +37,13 @@ interface BOMCategoryCardProps {
   onQuantityChange?: (partId: string, newQuantity: number) => void;
   onDeletePart?: (partId: string) => void;
   onDeleteCategory?: (categoryName: string) => void;
+  onEditCategory?: (oldName: string, newName: string) => void;
 }
 
-const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, onDeleteCategory }: BOMCategoryCardProps) => {
+const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, onDeleteCategory, onEditCategory }: BOMCategoryCardProps) => {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(category.name);
 
   const getStatusCount = (status: string) => {
     return category.items.filter(item => item.status === status).length;
@@ -74,7 +77,44 @@ const BOMCategoryCard = ({ category, onToggle, onPartClick, onQuantityChange, on
                 )}
                 <Package className="text-blue-500" size={20} />
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{category.name}</h3>
+                  <div className="flex items-center gap-1">
+                    {editing ? (
+                      <input
+                        className="text-lg font-semibold text-gray-900 border-b border-blue-400 bg-transparent outline-none px-1 w-40"
+                        value={editName}
+                        autoFocus
+                        onChange={e => setEditName(e.target.value)}
+                        onBlur={() => {
+                          setEditing(false);
+                          if (editName.trim() && editName !== category.name && onEditCategory) {
+                            onEditCategory(category.name, editName.trim());
+                          } else {
+                            setEditName(category.name);
+                          }
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            setEditing(false);
+                            if (editName.trim() && editName !== category.name && onEditCategory) {
+                              onEditCategory(category.name, editName.trim());
+                            } else {
+                              setEditName(category.name);
+                            }
+                          } else if (e.key === 'Escape') {
+                            setEditing(false);
+                            setEditName(category.name);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <h3 className="text-lg font-semibold text-gray-900">{category.name}</h3>
+                        <button className="ml-1 p-1 text-gray-500 hover:text-blue-600 align-middle" aria-label="Edit category name" onClick={e => { e.stopPropagation(); setEditing(true); }}>
+                          <Pencil size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-600">{category.items.length} parts</p>
                 </div>
               </div>
