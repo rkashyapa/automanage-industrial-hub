@@ -191,8 +191,16 @@ const BOM = () => {
   const [categoryForPart, setCategoryForPart] = useState<string | null>(null);
   const [addingNewCategory, setAddingNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [addPartError, setAddPartError] = useState<string | null>(null);
 
   const handleAddPart = () => {
+    // Check for duplicate Part ID
+    const allPartIds = categories.flatMap(cat => cat.items.map(item => item.partId.toLowerCase()));
+    if (allPartIds.includes(newPart.partId.trim().toLowerCase())) {
+      setAddPartError('Part ID must be unique. This Part ID already exists.');
+      return;
+    }
+    setAddPartError(null);
     if (!categoryForPart && !addingNewCategory) return;
     let finalCategory = categoryForPart;
     let updatedCategories = categories;
@@ -333,6 +341,9 @@ const BOM = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
             <div className="bg-white rounded shadow-lg p-6 min-w-[350px] text-center">
               <div className="mb-4 text-lg font-semibold">Add Part</div>
+              {addPartError && (
+                <div className="mb-2 text-red-600 text-sm font-medium">{addPartError}</div>
+              )}
               <select className="w-full border rounded p-2 mb-2" value={addingNewCategory ? '+new' : (categoryForPart ?? '')} onChange={e => {
                 if (e.target.value === '+new') {
                   setAddingNewCategory(true);
