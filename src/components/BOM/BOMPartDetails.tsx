@@ -387,6 +387,72 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
           </Dialog>
         </div>
         
+        {/* Documents Dropdown with Delete Option */}
+        <div className="relative mb-3">
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <div className="flex w-full items-center justify-between font-medium text-gray-900 px-0 py-2 bg-transparent border-none cursor-pointer">
+                <span>Documents</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    className={`p-1 rounded-full ${docDeleteMode ? 'bg-red-100 text-red-600' : ''}`}
+                    style={{ minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title={docDeleteMode ? 'Cancel' : 'Delete'}
+                    onClick={e => {
+                      e.stopPropagation();
+                      setDocDeleteMode(mode => !mode);
+                      setSelectedDocs([]);
+                    }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                  <span className="transition-transform duration-200" style={{ transform: 'rotate(var(--collapsible-arrow, 0deg))' }}>
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-2">
+                {documents.length === 0 && (
+                  <div className="text-gray-400 text-sm italic flex items-center gap-2 p-2"><FileText size={16} />No documents uploaded yet.</div>
+                )}
+                {documents.map(doc => (
+                  <div key={doc} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1 border border-gray-200">
+                    {docDeleteMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedDocs.includes(doc)}
+                        onChange={e => setSelectedDocs(prev =>
+                          e.target.checked
+                            ? [...prev, doc]
+                            : prev.filter(d => d !== doc)
+                        )}
+                      />
+                    )}
+                    <FileText size={16} className="text-blue-600 mr-1" />
+                    <span className="flex-1 text-left text-gray-800 text-sm truncate" title={doc}>{doc}</span>
+                  </div>
+                ))}
+                {docDeleteMode && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="mt-2"
+                    disabled={selectedDocs.length === 0}
+                    onClick={() => {
+                      setDocuments(documents.filter(doc => !selectedDocs.includes(doc)));
+                      setSelectedDocs([]);
+                      setDocDeleteMode(false);
+                    }}
+                  >
+                    Delete Selected
+                  </Button>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
         <Separator />
         
         {/* Vendor Section with Add Vendor Popup */}
@@ -600,14 +666,6 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
                   <label className="block text-sm font-medium mb-1">Lead Time</label>
                   <input className="w-full border rounded p-2" value={vendorLeadTime} onChange={e => setVendorLeadTime(e.target.value)} placeholder="Enter lead time" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Stock Status</label>
-                  <select className="w-full border rounded p-2" value={color} onChange={e => setColor(e.target.value)}>
-                    <option value="In Stock">In Stock</option>
-                    <option value="Limited Stock">Limited Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
-                  </select>
-              </div>
               </form>
               <DialogFooter className="mt-4 flex gap-2 items-center">
                 <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded" onClick={handleAddVendor} disabled={!vendorName.trim()}>Save</button>
@@ -637,75 +695,6 @@ const BOMPartDetails = ({ part, onClose, onUpdatePart, onDeletePart }: BOMPartDe
               )}
             </DialogContent>
           </Dialog>
-        </div>
-        
-        <Separator />
-        
-        {/* Documents Dropdown with Delete Option */}
-        <div className="relative mb-3">
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <div className="flex w-full items-center justify-between font-medium text-gray-900 px-0 py-2 bg-transparent border-none cursor-pointer">
-                <span>Documents</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`p-1 rounded-full ${docDeleteMode ? 'bg-gray-200 text-gray-700' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}
-                    style={{ minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title={docDeleteMode ? 'Cancel' : 'Delete'}
-                    onClick={e => {
-                      e.stopPropagation();
-                      setDocDeleteMode(mode => !mode);
-                      setSelectedDocs([]);
-                    }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                  <span className="transition-transform duration-200" style={{ transform: 'rotate(var(--collapsible-arrow, 0deg))' }}>
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </span>
-                </div>
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-2">
-                {documents.length === 0 && (
-                  <div className="text-gray-400 text-sm italic flex items-center gap-2 p-2"><FileText size={16} />No documents uploaded yet.</div>
-                )}
-                {documents.map(doc => (
-                  <div key={doc} className="flex items-center gap-2 bg-gray-50 rounded px-2 py-1 border border-gray-200">
-                    {docDeleteMode && (
-                      <input
-                        type="checkbox"
-                        checked={selectedDocs.includes(doc)}
-                        onChange={e => setSelectedDocs(prev =>
-                          e.target.checked
-                            ? [...prev, doc]
-                            : prev.filter(d => d !== doc)
-                        )}
-                      />
-                    )}
-                    <FileText size={16} className="text-blue-600 mr-1" />
-                    <span className="flex-1 text-left text-gray-800 text-sm truncate" title={doc}>{doc}</span>
-                  </div>
-                ))}
-                {docDeleteMode && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="mt-2"
-                    disabled={selectedDocs.length === 0}
-                    onClick={() => {
-                      setDocuments(documents.filter(doc => !selectedDocs.includes(doc)));
-                      setSelectedDocs([]);
-                      setDocDeleteMode(false);
-                    }}
-                  >
-                    Delete Selected
-                  </Button>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
         
         {/* Action Buttons */}
